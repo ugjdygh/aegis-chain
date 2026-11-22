@@ -70,7 +70,7 @@
     <div class="card">
       <h2 id="t-new">新建收款单</h2>
       <form id="form">
-        <select id="f-chain"><option value="demo">Demo Chain</option><option value="base-sepolia">Base Sepolia</option></select>
+        <select id="f-chain"><option value="demo">Demo Chain</option><option value="base-sepolia">Base Sepolia</option><option value="tron">TRON</option></select>
         <select id="f-asset"><option>USDC</option><option>ETH</option></select>
         <input id="f-amount" value="25" inputmode="decimal" placeholder="25">
         <input id="f-order" placeholder="order-1001">
@@ -133,13 +133,21 @@ const ADDRS = [
   '0x7c2c1a4d5e6f708192a3b4c5d6e7f8091a2b3c4d',
   '0x5b4a3c2d1e0f9081726354453423120f1e2d3c4b',
 ];
+/* TRON 地址是 base58check（"T" 开头，34 字符），不是 0x 十六进制。
+   这三个由 0x41+hex 经 sha256d 推导并逐个反向校验过，不要手写。 */
+const TRON_ADDRS = [
+  'TPURQLDRv6oGrKZdSteSpVFa5GfcHdmTNV',
+  'TMHmdA8hyXfKDoxAb9rpwW4dj8jEmoc44h',
+  'TJHuRTXdyuroaCHMNfdDd211WT1caXxvc8',
+];
 function newInvoice(chain, asset, amount, order){
   DB.seq++;
+  const pool = chain==='tron' ? TRON_ADDRS : ADDRS;
   const inv = {
     id: 'inv_demo' + DB.seq.toString().padStart(4,'0'),
-    chainKey: chain, chainId: chain==='demo'?20270:84532,
+    chainKey: chain, chainId: chain==='demo'?20270:chain==='tron'?728126428:84532,
     asset, amount: String(amount||'25'), orderId: order || '',
-    address: ADDRS[(DB.seq-1) % ADDRS.length],
+    address: pool[(DB.seq-1) % pool.length],
     status: 'pending', conf: 0, req: chain==='demo'?2:5,
   };
   DB.invoices.unshift(inv);
@@ -178,8 +186,10 @@ function render(){
     b.onclick = () => { const inv = DB.invoices.find(x=>x.id===b.dataset.pay); if(inv) simulate(inv); openPay(inv.id); };
   });
 
-  /* 收银台 */
-  const inv = tracked();
+  /* 收银台：必须画「屏幕上这一张」(currentInv)，不是「最新一张」(tracked())。
+     原实现 openPay(id) 只设置 currentInv 却从不读它，于是点列表里的第 1 张单，
+     收银台显示的是第 2 张单的地址和金额。 */
+  const inv = currentInv || tracked();
   if(inv){
     $('p-amount').textContent = inv.amount;
     $('p-asset').textContent = inv.asset;
@@ -214,11 +224,21 @@ $('p-copy').onclick = async () => {
   try{ await navigator.clipboard.writeText(tracked()?.address || ''); $('p-copy').textContent = t('copied');
     setTimeout(()=>$('p-copy').textContent = t('copy'), 1500); }catch(e){}
 };
+/* 深链按链生成。EIP-681（ethereum:）只适用于 EVM；TRON 用自己的 tron: 形式。
+   地址必须取 currentInv —— 与收银台显示的同一张单。 */
+function walletUri(inv){
+  if(!inv || !inv.address) return null;
+  if(inv.chainKey === 'tron') return 'tron:' + inv.address;
+  return 'ethereum:' + inv.address + '@' + inv.chainId;
+}
 $('p-open').onclick = () => {
-  const a = tracked()?.address; if(!a) return;
+  const inv = currentInv || tracked();
+  const a = inv?.address; if(!a) return;
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
   const isAndroid = /Android/.test(navigator.userAgent);
-  const uri = `ethereum:${a}@${tracked().chainId}`;
+  const uri = walletUri(inv);
+  /* TRON 钱包直接吃 tron: scheme，不要走 MetaMask 的 intent 跳转。 */
+  if(inv.chainKey === 'tron'){ location.href = uri; return; }
   if(isIOS){ location.href = 'https://metamask.app.link/dapp/' + location.host; return; }
   if(isAndroid){
     location.href = `intent://${location.host}#Intent;scheme=https;package=io.metamask;S.browser_fallback_url=${encodeURIComponent(location.href)};end`;
