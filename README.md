@@ -1,3 +1,11 @@
+> **本项目已于 2026-11-23 停止运营并归档。**
+> 当前状态：无部署、无对外可调用端点、无商户接入、无任何资金流转。
+> 历史代码仅作技术存档，不得用于实际收单、结算、兑换或代付。
+> 作者不提供任何形式的接入支持、部署协助或技术咨询。
+> 原合约地址已弃用，请勿向该地址或任何关联地址转账。
+>
+> **This project was shut down and archived on 2026-11-23.** No deployments, no public endpoints, no merchant onboarding, no fund flow. Historical code is for technical reference only and must not be used for live collection, settlement, exchange, or payout. All previously deployed contract addresses are deprecated — do not send funds to them. Details: [SHUTDOWN.md](SHUTDOWN.md)
+
 # Aegis Chain
 
 > Non-custodial multi-chain payment & donation gateway — invoices, on-chain settlement, cross-chain intents, mobile checkout. Core production engine is closed; the demo, SDK, mobile shell and docs are open under MIT.
